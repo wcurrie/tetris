@@ -380,8 +380,55 @@ class Game {
 
   private currentPiece: Piece;
   private currentCenter: Tile;
+  private currentPeriodMillis: number;
+  private lastTickTime: number;
+  private dropping: boolean;
 
-  constructor(private readonly board: Board, private readonly renderer: BoardRenderer) {
+  constructor(
+      private readonly board: Board,
+      private readonly renderer: BoardRenderer,
+      private readonly pieces: Array<(() => Piece)>
+  ) {
+    this.lastTickTime = 0;
+    this.currentPeriodMillis = 800;
+    this.dropping = false;
+  }
+
+  public start() {
+    const self = this;
+    function step() {
+      self.tick();
+      window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
+  }
+
+  public tick() {
+    const now = Date.now();
+    const period = this.dropping ? 20 : this.currentPeriodMillis;
+    if ((now - this.lastTickTime) >= period) {
+      if (this.currentPiece) {
+        this.advance();
+      } else {
+        this.newPiece();
+      }
+      this.renderer.render();
+      this.lastTickTime = now;
+    }
+  }
+
+  private advance() {
+    const {column, row} = this.currentCenter;
+    const newCenter = new Tile(column, row + 1);
+    if (!this.updateCurrent(this.currentPiece, newCenter)) {
+      this.newPiece();
+    }
+  }
+
+  private newPiece() {
+    this.dropping = false;
+    const piece = this.randomPiece();
+    this.addPiece(piece, new Tile(4, 0));
   }
 
   public addPiece(piece: Piece, center: Tile) {
@@ -392,14 +439,14 @@ class Game {
   }
 
   public rotate(clockwise: boolean) {
-    if (this.currentPiece) {
+    if (this.currentPiece && !this.dropping) {
       const shifted = this.currentPiece.rotate(clockwise);
       this.updateCurrent(shifted, this.currentCenter)
     }
   }
 
   public shift(right: boolean) {
-    if (this.currentPiece) {
+    if (this.currentPiece && !this.dropping) {
       const {column, row} = this.currentCenter;
       const columnDelta = right ? 1 : -1;
       const newCenter = new Tile(column + columnDelta, row);
@@ -407,15 +454,25 @@ class Game {
     }
   }
 
-  private updateCurrent(newCurrent: Piece, newCenter: Tile) {
+  public drop() {
+    this.dropping = true;
+  }
+
+  private updateCurrent(newCurrent: Piece, newCenter: Tile): boolean {
     this.board.remove(this.currentPiece);
     if (!this.board.addPiece(newCurrent, newCenter)) {
       this.board.addPiece(this.currentPiece, this.currentCenter);
+      return false;
     } else {
       this.currentPiece = newCurrent;
       this.currentCenter = newCenter;
       this.renderer.render();
+      return true;
     }
+  }
+
+  private randomPiece() {
+    return this.pieces[Math.floor(Math.random() * this.pieces.length)]();
   }
 
   public demoPiece(piece: Piece) {
@@ -427,22 +484,30 @@ class Game {
   }
 }
 
+const pieces = [
+    newStick,
+    newJ,
+    newL,
+    newSquare,
+    newS,
+    newT,
+    newZ,
+];
 const board = new Board();
 const renderer = new BoardRenderer(30, board);
-const game = new Game(board, renderer);
-game.addPiece(newStick(), new Tile(2, 2));
+const game = new Game(board, renderer, pieces);
 document.body.appendChild(renderer.canvas);
 renderer.render();
 
 //debug
-(<any>window).game = game;
-(<any>window).newStick = newStick;
-(<any>window).newJ = newJ;
-(<any>window).newL = newL;
-(<any>window).newSquare = newSquare;
-(<any>window).newS= newS;
-(<any>window).newT= newT;
-(<any>window).newZ= newZ;
+// (<any>window).game = game;
+// (<any>window).newStick = newStick;
+// (<any>window).newJ = newJ;
+// (<any>window).newL = newL;
+// (<any>window).newSquare = newSquare;
+// (<any>window).newS= newS;
+// (<any>window).newT= newT;
+// (<any>window).newZ= newZ;
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   console.log(e.key);
@@ -459,5 +524,10 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     case 'ArrowRight':
       game.shift(true);
       break;
+    case ' ':
+      game.drop();
+      break;
   }
 });
+
+game.start();
