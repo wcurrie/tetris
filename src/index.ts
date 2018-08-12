@@ -27,7 +27,7 @@ function rotateClockwise(current: PieceOrientation) {
   }
 }
 
-function rotateAntitClockwise(current: PieceOrientation) {
+function rotateAntiClockwise(current: PieceOrientation) {
   const {A, B, C, D} = PieceOrientation;
   switch (current) {
     case A:
@@ -65,49 +65,229 @@ class Piece {
     if (clockwise) {
       return new Piece(this.color, rotateClockwise(this.orientation), this.tiler);
     } else {
-      return new Piece(this.color, rotateAntitClockwise(this.orientation), this.tiler);
+      return new Piece(this.color, rotateAntiClockwise(this.orientation), this.tiler);
     }
   }
 }
 
 function newStick(): Piece {
   function stickTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
-    const {column, row} = center;
     switch (orientation) {
       case PieceOrientation.A:
-        return [
-          new Tile(column - 1, row),
-          new Tile(column, row),
-          new Tile(column + 1, row),
-          new Tile(column + 2, row)
-        ];
+        return toTiles(center, [
+          [0, 0, 0, 0],
+          [1, 1, 1, 1],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+        ]);
       case PieceOrientation.B:
-        return [
-          new Tile(column, row - 1),
-          new Tile(column, row),
-          new Tile(column, row + 1),
-          new Tile(column, row + 2)
-        ];
+        return toTiles(center, [
+          [0, 1, 0, 0],
+          [0, 1, 0, 0],
+          [0, 1, 0, 0],
+          [0, 1, 0, 0],
+        ]);
       case PieceOrientation.C:
-        return [
-          new Tile(column - 1, row + 1),
-          new Tile(column, row + 1),
-          new Tile(column + 1, row + 1),
-          new Tile(column + 2, row + 1)
-        ];
+        return toTiles(center, [
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+          [1, 1, 1, 1],
+          [0, 0, 0, 0],
+        ]);
       case PieceOrientation.D:
-        return [
-          new Tile(column - 1, row - 1),
-          new Tile(column - 1, row),
-          new Tile(column - 1, row + 1),
-          new Tile(column - 1, row + 2)
-        ];
-
+        return toTiles(center, [
+          [0, 0, 1, 0],
+          [0, 0, 1, 0],
+          [0, 0, 1, 0],
+          [0, 0, 1, 0],
+        ]);
     }
   }
+
   return new Piece(Color.LightBlue, PieceOrientation.A, stickTiler);
 }
 
+function toTiles(center: Tile, positions: Array<Array<number>>): Array<Tile> {
+  const tiles = Array<Tile>();
+  positions.forEach((columns, row) => {
+    columns.forEach((v, column) => {
+      if (v) {
+        tiles.push(new Tile(center.column + column, center.row + row));
+      }
+    })
+  });
+  return tiles;
+}
+
+function newJ(): Piece {
+  function jTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    switch (orientation) {
+      case PieceOrientation.A:
+        return toTiles(center, [
+          [1, 0, 0],
+          [1, 1, 1],
+          [0, 0, 0],
+        ]);
+      case PieceOrientation.B:
+        return toTiles(center, [
+          [0, 1, 1],
+          [0, 1, 0],
+          [0, 1, 0],
+        ]);
+      case PieceOrientation.C:
+        return toTiles(center, [
+          [0, 0, 0],
+          [1, 1, 1],
+          [0, 0, 1],
+        ]);
+      case PieceOrientation.D:
+        return toTiles(center, [
+          [0, 1, 0],
+          [0, 1, 0],
+          [1, 1, 0],
+        ]);
+    }
+  }
+  return new Piece(Color.DarkBlue, PieceOrientation.A, jTiler);
+}
+
+function newL(): Piece {
+  function lTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    switch (orientation) {
+      case PieceOrientation.A:
+        return toTiles(center, [
+          [0, 0, 1],
+          [1, 1, 1],
+          [0, 0, 0],
+        ]);
+      case PieceOrientation.B:
+        return toTiles(center, [
+          [0, 1, 0],
+          [0, 1, 0],
+          [0, 1, 1],
+        ]);
+      case PieceOrientation.C:
+        return toTiles(center, [
+          [0, 0, 0],
+          [1, 1, 1],
+          [1, 0, 0],
+        ]);
+      case PieceOrientation.D:
+        return toTiles(center, [
+          [1, 1, 0],
+          [0, 1, 0],
+          [0, 1, 0],
+        ]);
+    }
+  }
+  return new Piece(Color.Orange, PieceOrientation.A, lTiler);
+}
+
+function newSquare(): Piece {
+  function squareTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    return toTiles(center, [
+      [1, 1],
+      [1, 1],
+    ]);
+  }
+  return new Piece(Color.Yellow, PieceOrientation.A, squareTiler);
+}
+
+function newS(): Piece {
+  function sTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    switch (orientation) {
+      case PieceOrientation.A:
+        return toTiles(center, [
+          [0, 1, 1],
+          [1, 1, 0],
+          [0, 0, 0],
+        ]);
+      case PieceOrientation.B:
+        return toTiles(center, [
+          [0, 1, 0],
+          [0, 1, 1],
+          [0, 0, 1],
+        ]);
+      case PieceOrientation.C:
+        return toTiles(center, [
+          [0, 0, 0],
+          [0, 1, 1],
+          [1, 1, 0],
+        ]);
+      case PieceOrientation.D:
+        return toTiles(center, [
+          [1, 0, 0],
+          [1, 1, 0],
+          [0, 1, 0],
+        ]);
+    }
+  }
+  return new Piece(Color.LightGreen, PieceOrientation.A, sTiler);
+}
+
+function newT(): Piece {
+  function tTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    switch (orientation) {
+      case PieceOrientation.A:
+        return toTiles(center, [
+          [0, 1, 0],
+          [1, 1, 1],
+          [0, 0, 0],
+        ]);
+      case PieceOrientation.B:
+        return toTiles(center, [
+          [0, 1, 0],
+          [0, 1, 1],
+          [0, 1, 0],
+        ]);
+      case PieceOrientation.C:
+        return toTiles(center, [
+          [0, 0, 0],
+          [1, 1, 1],
+          [0, 1, 0],
+        ]);
+      case PieceOrientation.D:
+        return toTiles(center, [
+          [0, 1, 0],
+          [1, 1, 0],
+          [0, 1, 0],
+        ]);
+    }
+  }
+  return new Piece(Color.Purple, PieceOrientation.A, tTiler);
+}
+
+function newZ(): Piece {
+  function zTiler(center: Tile, orientation: PieceOrientation): Array<Tile> {
+    switch (orientation) {
+      case PieceOrientation.A:
+        return toTiles(center, [
+          [1, 1, 0],
+          [0, 1, 1],
+          [0, 0, 0],
+        ]);
+      case PieceOrientation.B:
+        return toTiles(center, [
+          [0, 0, 1],
+          [0, 1, 1],
+          [0, 1, 0],
+        ]);
+      case PieceOrientation.C:
+        return toTiles(center, [
+          [0, 0, 0],
+          [1, 1, 0],
+          [0, 1, 1],
+        ]);
+      case PieceOrientation.D:
+        return toTiles(center, [
+          [0, 1, 0],
+          [1, 1, 0],
+          [1, 0, 0],
+        ]);
+    }
+  }
+  return new Piece(Color.Red, PieceOrientation.A, zTiler);
+}
 
 type Cell = Piece | null
 
@@ -217,6 +397,7 @@ class Game {
       this.updateCurrent(shifted, this.currentCenter)
     }
   }
+
   public shift(right: boolean) {
     if (this.currentPiece) {
       const {column, row} = this.currentCenter;
@@ -236,6 +417,14 @@ class Game {
       this.renderer.render();
     }
   }
+
+  public demoPiece(piece: Piece) {
+    if (this.currentPiece) {
+      this.board.remove(this.currentPiece);
+    }
+    this.addPiece(piece, this.currentCenter);
+    this.renderer.render();
+  }
 }
 
 const board = new Board();
@@ -245,7 +434,18 @@ game.addPiece(newStick(), new Tile(2, 2));
 document.body.appendChild(renderer.canvas);
 renderer.render();
 
+//debug
+(<any>window).game = game;
+(<any>window).newStick = newStick;
+(<any>window).newJ = newJ;
+(<any>window).newL = newL;
+(<any>window).newSquare = newSquare;
+(<any>window).newS= newS;
+(<any>window).newT= newT;
+(<any>window).newZ= newZ;
+
 document.addEventListener('keydown', (e: KeyboardEvent) => {
+  console.log(e.key);
   switch (e.key) {
     case 'ArrowUp':
       game.rotate(false);
