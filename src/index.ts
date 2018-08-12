@@ -294,7 +294,6 @@ type Cell = Piece | null
 class Board {
 
   private readonly cells: Cell[][];
-  private readonly cellsByPiece = new Map<Piece, Array<Tile>>();
 
   constructor(public columns: number = 10, public rows: number = 20) {
     this.cells = new Array<Cell[]>(rows);
@@ -309,19 +308,50 @@ class Board {
       return false;
     }
     this.update(tiles, piece);
-    this.cellsByPiece.set(piece, tiles);
     return true;
   }
 
-  public remove(piece: Piece) {
-    const tiles = this.cellsByPiece.get(piece);
+  public remove(piece: Piece, center: Tile) {
+    const tiles = piece.toTiles(center);
     this.update(tiles, null);
-    this.cellsByPiece.delete(piece);
+  }
+
+  public deleteRow(row: number) {
+    // empty the row
+    this.cells[row].forEach((_, cell, theRow) => {
+      theRow[cell] = null;
+    });
+    // move everything above down by 1 row
+    for (let r = row - 1; r >=0 ; r--) {
+      this.cells[r].forEach((tile, cell) => {
+        this.cells[r + 1][cell] = tile;
+      });
+    }
   }
 
   public colorOf(column: number, row: number): Color {
     const cell = this.cells[row][column];
     return cell && cell.color;
+  }
+
+  public findFullRows(): Array<number> {
+    const rowIsFull = (row: Array<Cell>) => {
+      let fullCells = 0;
+      for (let r = 0; r < row.length; r++) {
+        const cell = row[r];
+        if (cell !== null && cell !== undefined) {
+          fullCells++;
+        }
+      }
+      return fullCells === row.length;
+    };
+    const fullRows = [];
+    for (let r = 0; r < this.cells.length; r++) {
+      if (rowIsFull(this.cells[r])) {
+        fullRows.push(r);
+      }
+    }
+    return fullRows;
   }
 
   private canAdd(tiles: Array<Tile>): boolean {
@@ -352,7 +382,7 @@ class BoardRenderer {
     this.ctx = this.canvas.getContext('2d');
   }
 
-  public render() {
+  public render(fullRows: Array<number> = [], fullAlpha: number = 1.0) {
     const {columns, rows} = this.board;
     const {tilePx, ctx} = this;
     for (let column = 0; column < columns; column++) {
@@ -361,6 +391,11 @@ class BoardRenderer {
         ctx.beginPath();
         ctx.rect(column * tilePx, row * tilePx, tilePx, tilePx);
         if (color) {
+          if (row in fullRows) {
+            ctx.globalAlpha = fullAlpha;
+          } else {
+            ctx.globalAlpha = 1.0;
+          }
           ctx.fillStyle = color;
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
         } else {
@@ -383,6 +418,8 @@ class Game {
   private currentPeriodMillis: number;
   private lastTickTime: number;
   private dropping: boolean;
+  private fullRows: Array<number>;
+  private fullRowAlpha: number;
 
   constructor(
       private readonly board: Board,
@@ -392,6 +429,7 @@ class Game {
     this.lastTickTime = 0;
     this.currentPeriodMillis = 800;
     this.dropping = false;
+    this.fullRows = [];
   }
 
   public start() {
@@ -404,16 +442,30 @@ class Game {
   }
 
   public tick() {
-    const now = Date.now();
-    const period = this.dropping ? 20 : this.currentPeriodMillis;
-    if ((now - this.lastTickTime) >= period) {
-      if (this.currentPiece) {
-        this.advance();
+    if (this.fullRows.length > 0) {
+      // assert: !dropping && this.currentPiece == null
+      this.fullRowAlpha -= 0.2;
+      if (this.fullRowAlpha > 0) {
+        this.renderer.render(this.fullRows, this.fullRowAlpha);
       } else {
-        this.newPiece();
+        for (let row of this.fullRows) {
+          this.board.deleteRow(row);
+        }
+        this.fullRows = [];
+        this.renderer.render();
       }
-      this.renderer.render();
-      this.lastTickTime = now;
+    } else {
+      const now = Date.now();
+      const period = this.dropping ? 20 : this.currentPeriodMillis;
+      if ((now - this.lastTickTime) >= period) {
+        if (this.currentPiece) {
+          this.advance();
+        } else {
+          this.newPiece();
+        }
+        this.renderer.render();
+        this.lastTickTime = now;
+      }
     }
   }
 
@@ -421,7 +473,12 @@ class Game {
     const {column, row} = this.currentCenter;
     const newCenter = new Tile(column, row + 1);
     if (!this.updateCurrent(this.currentPiece, newCenter)) {
-      this.newPiece();
+      this.fullRows = this.board.findFullRows();
+      if (this.fullRows.length == 0) {
+        this.newPiece();
+      } else {
+        this.fullRowAlpha = 1.0;
+      }
     }
   }
 
@@ -459,7 +516,7 @@ class Game {
   }
 
   private updateCurrent(newCurrent: Piece, newCenter: Tile): boolean {
-    this.board.remove(this.currentPiece);
+    this.board.remove(this.currentPiece, this.currentCenter);
     if (!this.board.addPiece(newCurrent, newCenter)) {
       this.board.addPiece(this.currentPiece, this.currentCenter);
       return false;
@@ -473,14 +530,6 @@ class Game {
 
   private randomPiece() {
     return this.pieces[Math.floor(Math.random() * this.pieces.length)]();
-  }
-
-  public demoPiece(piece: Piece) {
-    if (this.currentPiece) {
-      this.board.remove(this.currentPiece);
-    }
-    this.addPiece(piece, this.currentCenter);
-    this.renderer.render();
   }
 }
 
@@ -498,16 +547,6 @@ const renderer = new BoardRenderer(30, board);
 const game = new Game(board, renderer, pieces);
 document.body.appendChild(renderer.canvas);
 renderer.render();
-
-//debug
-// (<any>window).game = game;
-// (<any>window).newStick = newStick;
-// (<any>window).newJ = newJ;
-// (<any>window).newL = newL;
-// (<any>window).newSquare = newSquare;
-// (<any>window).newS= newS;
-// (<any>window).newT= newT;
-// (<any>window).newZ= newZ;
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   console.log(e.key);
