@@ -1,4 +1,4 @@
-Clunky implementation of the block game
+Clunky implementation of the block game [play](https://wcurrie.github.io/tetris/dist/index.html)
 
 ## Running
 
