@@ -385,13 +385,14 @@ class BoardRenderer {
   public render(fullRows: Array<number> = [], fullAlpha: number = 1.0) {
     const {columns, rows} = this.board;
     const {tilePx, ctx} = this;
-    for (let column = 0; column < columns; column++) {
-      for (let row = 0; row < rows; row++) {
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
         let color = this.board.colorOf(column, row);
         ctx.beginPath();
+        ctx.clearRect(column * tilePx, row * tilePx, tilePx, tilePx);
         ctx.rect(column * tilePx, row * tilePx, tilePx, tilePx);
         if (color) {
-          if (row in fullRows) {
+          if (fullRows.indexOf(row) !== -1) {
             ctx.globalAlpha = fullAlpha;
           } else {
             ctx.globalAlpha = 1.0;
@@ -418,7 +419,7 @@ class Game {
   private currentPeriodMillis: number;
   private lastTickTime: number;
   private dropping: boolean;
-  private fullRows: Array<number>;
+  public fullRows: Array<number>;
   private fullRowAlpha: number;
 
   constructor(
@@ -444,7 +445,7 @@ class Game {
   public tick() {
     if (this.fullRows.length > 0) {
       // assert: !dropping && this.currentPiece == null
-      this.fullRowAlpha -= 0.2;
+      this.fullRowAlpha -= 0.04;
       if (this.fullRowAlpha > 0) {
         this.renderer.render(this.fullRows, this.fullRowAlpha);
       } else {
@@ -548,8 +549,10 @@ const game = new Game(board, renderer, pieces);
 document.body.appendChild(renderer.canvas);
 renderer.render();
 
+// debug
+(<any>window).game = game;
+
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  console.log(e.key);
   switch (e.key) {
     case 'ArrowUp':
       game.rotate(false);
